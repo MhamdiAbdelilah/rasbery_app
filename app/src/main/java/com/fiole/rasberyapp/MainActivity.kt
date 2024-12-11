@@ -36,50 +36,13 @@ class MainActivity : AppCompatActivity() {
         val textView: TextView = findViewById(R.id.tab_title)
 
         var room : String = "salon"
-        salon1.setOnCheckedChangeListener { _, isChecked ->
-            CoroutineScope(Dispatchers.Main).launch {
-                val lightValue :Int = if (isChecked) 1 else 0
-                val response = withContext(Dispatchers.IO) {
-                    sendGetRequest(url,lightValue,room,lightnbr = 1)
-                }
-                val responseJson : RoomLightsState? = jsonToKotlin(response)
-                if (responseJson != null) {
-                    if (responseJson.lights[0] == 1) {
-                        salon1.setBackgroundResource(R.drawable.light_btn_on)
-                    } else {
-                        salon1.setBackgroundResource(R.drawable.light_btn_off)
-                    }
-                }else {
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Error")
-                        .setMessage("Failed to parse data.")
-                        .setPositiveButton("OK", null)
-                        .show()
-                }
-            }
-        }
-        salon2.setOnCheckedChangeListener { _, isChecked ->
-            CoroutineScope(Dispatchers.Main).launch {
-                val lightValue :Int = if (isChecked) 1 else 0
-                val response = withContext(Dispatchers.IO) {
-                    sendGetRequest(url,lightValue,room, lightnbr = 2)
-                }
-                val responseJson : RoomLightsState? = jsonToKotlin(response)
-                if (responseJson != null) {
-                    if (responseJson.lights[0] == 1) {
-                        salon2.setBackgroundResource(R.drawable.light_btn_on)
-                    } else {
-                        salon2.setBackgroundResource(R.drawable.light_btn_off)
-                    }
-                }else {
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Error")
-                        .setMessage("Failed to parse data.")
-                        .setPositiveButton("OK", null)
-                        .show()
-                }
-            }
-        }
+        val salon1Handler = LightToggleButtonHandler(salon1, url, "salon",1)
+        val salon2Handler = LightToggleButtonHandler(salon2, url, "salon",2)
+        val chambre11Handler = LightToggleButtonHandler(chambre11, url, "chambre_1",1)
+        val chambre12Handler = LightToggleButtonHandler(chambre12, url, "chambre_1",2)
+        val chambre21Handler = LightToggleButtonHandler(chambre21, url, "chambre_2",1)
+        val chambre22Handler = LightToggleButtonHandler(chambre22, url, "chambre_2",2)
+
 
     }
 }
@@ -89,6 +52,62 @@ data class RoomLightsState(
     val room: String,
     val lights: List<Int>
 )
+
+class LightToggleButtonHandler(
+    private val toggleButton: ToggleButton,
+    private val url: String,
+    private val room: String,
+    private val lightNumber: Int = 1
+) {
+
+    private val coroutineScope = CoroutineScope(Dispatchers.Main)
+
+    init {
+        toggleButton.setOnCheckedChangeListener { _, isChecked ->
+            handleToggleChange(isChecked)
+        }
+    }
+
+    private fun handleToggleChange(isChecked: Boolean) {
+        coroutineScope.launch {
+            val lightValue = if (isChecked) 1 else 0
+
+            val response = withContext(Dispatchers.IO) {
+                sendGetRequest(url, lightValue, room, lightNumber)
+            }
+            val responseJson = jsonToKotlin(response)
+            updateToggleButtonState(responseJson)
+        }
+    }
+
+    private fun updateToggleButtonState(responseJson: RoomLightsState?) {
+        if (responseJson != null) {
+            try {
+                val lightState = responseJson.lights[lightNumber - 1]
+                val backgroundResource = if (lightState == 1) {
+                    R.drawable.light_btn_on
+                } else {
+                    R.drawable.light_btn_off
+                }
+                toggleButton.setBackgroundResource(backgroundResource)
+            }
+            catch (e: Exception) {
+                showErrorDialog()
+            }
+
+        } else {
+            showErrorDialog()
+        }
+    }
+
+    private fun showErrorDialog() {
+        AlertDialog.Builder(toggleButton.context)
+            .setTitle("Error")
+            .setMessage("Failed to parse data.")
+            .setPositiveButton("OK", null)
+            .show()
+    }
+}
 
 fun sendGetRequest (url : String , lightValue : Int , room : String ,lightnbr : Int): String {
     return try {
