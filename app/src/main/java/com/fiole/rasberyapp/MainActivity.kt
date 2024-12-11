@@ -14,7 +14,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
-
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 
 class MainActivity : AppCompatActivity() {
@@ -24,7 +25,7 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
-        val url = "https://37a2d40b-698f-4a31-9a50-24ddaf34f11c.mock.pstmn.io/light"
+        val url = "http://192.168.150.175:1880/light"
         val salon1: ToggleButton  = findViewById(R.id.salon_1)
         val salon2: ToggleButton = findViewById(R.id.salon_2)
         val chambre11: ToggleButton  = findViewById(R.id.chambre_1_1)
@@ -108,17 +109,29 @@ class LightToggleButtonHandler(
     }
 }
 
-fun sendGetRequest (url : String , lightValue : Int , room : String ,lightnbr : Int): String {
+fun sendGetRequest(url: String, lightValue: Int, room: String, lightnbr: Int): String {
+    val client = OkHttpClient()
+    val fullUrl = "$url?room=$room&light=$lightnbr&state=$lightValue"
+
+    val request = Request.Builder()
+        .url(fullUrl)
+        .get()
+        .build()
+
     return try {
-        val rocket = URL("$url?room=$room&light=$lightnbr&state=$lightValue")
-        (rocket.openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-        }.inputStream.bufferedReader().use { it.readText() }
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                "Error: Server responded with ${response.code}"
+            } else {
+                response.body?.string() ?: "Error: Empty response"
+            }
+        }
     } catch (e: Exception) {
         e.printStackTrace()
         "Error: ${e.message}"
     }
 }
+
 
 fun jsonToKotlin(response: String): RoomLightsState ? {
     return try {
