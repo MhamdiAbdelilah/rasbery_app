@@ -1,22 +1,26 @@
 package com.fiole.rasberyapp
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Button
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.ToggleButton
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.textfield.TextInputLayout
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
+var url = "http://192.168.1.63:1880/light"
 
 class MainActivity : AppCompatActivity() {
     @SuppressLint("MissingInflatedId")
@@ -25,7 +29,12 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
-        val url = "http://192.168.150.175:1880/light"
+        val settingsbtn = findViewById<ImageButton>(R.id.settings_btn)
+
+        settingsbtn.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
         val salon1: ToggleButton  = findViewById(R.id.salon_1)
         val salon2: ToggleButton = findViewById(R.id.salon_2)
         val chambre11: ToggleButton  = findViewById(R.id.chambre_1_1)
@@ -35,7 +44,6 @@ class MainActivity : AppCompatActivity() {
 
         val textView: TextView = findViewById(R.id.tab_title)
 
-        var room : String = "salon"
         val salon1Handler = LightToggleButtonHandler(salon1, url, "salon",1)
         val salon2Handler = LightToggleButtonHandler(salon2, url, "salon",2)
         val chambre11Handler = LightToggleButtonHandler(chambre11, url, "chambre_1",1)
@@ -47,6 +55,26 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
+class SettingsActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContentView(R.layout.settings)
+
+        val InputIp = findViewById<TextInputLayout>(R.id.input_ip)
+
+        val btnIp = findViewById<Button>(R.id.btn_ip)
+        btnIp.setOnClickListener{
+            if (InputIp.editText?.text != null){
+                url = "http://${InputIp.editText?.text}:1880/light"
+                startActivity(Intent(this, MainActivity::class.java))
+            }else{
+                showErrorDialog(this,"Please enter an IP address")
+            }
+
+        }
+    }
+}
 
 data class RoomLightsState(
     val room: String,
@@ -141,4 +169,12 @@ fun jsonToKotlin(response: String): RoomLightsState ? {
         e.printStackTrace()
         null
     }
+}
+
+fun showErrorDialog(context: Context, alertText: String?, title: String = "Error") {
+    AlertDialog.Builder(context)
+        .setTitle(title)
+        .setMessage(alertText ?: "An error occurred.")
+        .setPositiveButton("OK", null)
+        .show()
 }
